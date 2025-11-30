@@ -72,10 +72,9 @@ const Actions = ({ prefix }: Props) => {
 
   const uploadFilesParallel = async (
     files: File[],
-    uploadFileStates: UploadFile[]
+    _uploadFileStates: UploadFile[]
   ) => {
     const MAX_CONCURRENT = 3; // Upload 3 files at a time
-    const uploadQueue = [...files];
     const activeUploads = new Set<Promise<void>>();
 
     const uploadFile = async (file: File, index: number) => {
