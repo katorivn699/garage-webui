@@ -3,11 +3,9 @@ package router
 import (
 	"encoding/json"
 	"errors"
+	"khairul169/garage-webui/schema"
 	"khairul169/garage-webui/utils"
 	"net/http"
-	"strings"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Auth struct{}
@@ -22,20 +20,22 @@ func (c *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userPass := strings.Split(utils.GetEnv("AUTH_USER_PASS", ""), ":")
-	if len(userPass) < 2 {
-		utils.ResponseErrorStatus(w, errors.New("AUTH_USER_PASS not set"), 500)
+	// Validate credentials using user store
+	user, err := utils.Users.ValidateCredentials(body.Username, body.Password)
+	if err != nil {
+		utils.ResponseErrorStatus(w, err, http.StatusUnauthorized)
 		return
 	}
 
-	if strings.TrimSpace(body.Username) != userPass[0] || bcrypt.CompareHashAndPassword([]byte(userPass[1]), []byte(body.Password)) != nil {
-		utils.ResponseErrorStatus(w, errors.New("invalid username or password"), 401)
-		return
-	}
-
+	// Set session data
 	utils.Session.Set(r, "authenticated", true)
-	utils.ResponseSuccess(w, map[string]bool{
+	utils.Session.Set(r, "user_id", user.ID)
+	utils.Session.Set(r, "username", user.Username)
+	utils.Session.Set(r, "role", string(user.Role))
+
+	utils.ResponseSuccess(w, map[string]interface{}{
 		"authenticated": true,
+		"user":          user.ToResponse(),
 	})
 }
 
@@ -45,20 +45,24 @@ func (c *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Auth) GetStatus(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated := true
+	isAuthenticated := false
 	authSession := utils.Session.Get(r, "authenticated")
-	enabled := false
-
-	if utils.GetEnv("AUTH_USER_PASS", "") != "" {
-		enabled = true
-	}
+	var currentUser *schema.UserResponse = nil
 
 	if authSession != nil && authSession.(bool) {
 		isAuthenticated = true
+		userID := utils.Session.Get(r, "user_id")
+		if userID != nil {
+			user, err := utils.Users.GetByID(userID.(string))
+			if err == nil {
+				currentUser = user.ToResponse()
+			}
+		}
 	}
 
-	utils.ResponseSuccess(w, map[string]bool{
-		"enabled":       enabled,
+	utils.ResponseSuccess(w, map[string]interface{}{
+		"enabled":       true,
 		"authenticated": isAuthenticated,
+		"user":          currentUser,
 	})
 }

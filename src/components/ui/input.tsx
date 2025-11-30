@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { Input as BaseInput } from "react-daisyui";
+import { Input as BaseInput, Select as BaseSelect } from "react-daisyui";
 import FormControl from "./form-control";
 import { FieldValues } from "react-hook-form";
 
@@ -36,6 +36,39 @@ export const InputField = <T extends FieldValues>({
       className={className}
       render={(field) => (
         <Input {...props} {...field} className={inputClassName} />
+      )}
+    />
+  );
+};
+
+type SelectFieldProps<T extends FieldValues> = Omit<
+  React.ComponentPropsWithoutRef<typeof FormControl<T>>,
+  "render"
+> & {
+  options: Array<{ label: string; value: string }>;
+};
+
+export const SelectField = <T extends FieldValues>({
+  form,
+  name,
+  title,
+  className,
+  options,
+}: SelectFieldProps<T>) => {
+  return (
+    <FormControl
+      form={form}
+      name={name}
+      title={title}
+      className={className}
+      render={(field) => (
+        <BaseSelect {...field} className="select select-bordered">
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </BaseSelect>
       )}
     />
   );

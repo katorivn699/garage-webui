@@ -38,25 +38,51 @@ type CheckboxFieldProps<T extends FieldValues> = Omit<
   React.ComponentPropsWithoutRef<typeof FormControl<T>>,
   "render"
 > &
-  CheckboxProps;
+  CheckboxProps & {
+    value?: string; // For array checkboxes
+  };
 
 export const CheckboxField = <T extends FieldValues>({
   form,
   name,
+  value,
   ...props
 }: CheckboxFieldProps<T>) => {
   return (
     <FormControl
       form={form}
       name={name}
-      render={(field) => (
-        <Checkbox
-          {...props}
-          {...field}
-          checked={field.value}
-          onChange={(e) => field.onChange(e.target.checked)}
-        />
-      )}
+      render={(field) => {
+        // Handle array values (like bucket_permissions)
+        if (value !== undefined) {
+          const fieldValue = Array.isArray(field.value) ? field.value : [];
+          const isChecked = fieldValue.includes(value);
+          
+          return (
+            <Checkbox
+              {...props}
+              {...field}
+              checked={isChecked}
+              onChange={(e) => {
+                const newValue = e.target.checked
+                  ? [...fieldValue, value]
+                  : fieldValue.filter((v: string) => v !== value);
+                field.onChange(newValue);
+              }}
+            />
+          );
+        }
+        
+        // Handle single boolean value
+        return (
+          <Checkbox
+            {...props}
+            {...field}
+            checked={field.value}
+            onChange={(e) => field.onChange(e.target.checked)}
+          />
+        );
+      }}
     />
   );
 };

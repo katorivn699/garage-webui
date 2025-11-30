@@ -27,6 +27,13 @@ func (b *Buckets) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get current user for permission filtering
+	userID := utils.Session.Get(r, "user_id")
+	var currentUser *schema.User
+	if userID != nil {
+		currentUser, _ = utils.Users.GetByID(userID.(string))
+	}
+
 	ch := make(chan schema.Bucket, len(buckets))
 
 	for _, bucket := range buckets {
@@ -51,7 +58,23 @@ func (b *Buckets) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	res := make([]schema.Bucket, 0, len(buckets))
 	for i := 0; i < len(buckets); i++ {
-		res = append(res, <-ch)
+		bucket := <-ch
+		
+		// Filter buckets based on user permissions
+		if currentUser != nil && currentUser.Role != schema.RoleAdmin {
+			// Get bucket name from global aliases
+			bucketName := ""
+			if len(bucket.GlobalAliases) > 0 {
+				bucketName = bucket.GlobalAliases[0]
+			}
+			
+			// Check if user has permission
+			if bucketName != "" && !utils.Users.HasBucketPermission(currentUser.ID, bucketName) {
+				continue
+			}
+		}
+		
+		res = append(res, bucket)
 	}
 
 	utils.ResponseSuccess(w, res)

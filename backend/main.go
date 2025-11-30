@@ -18,6 +18,11 @@ func main() {
 	utils.InitCacheManager()
 	sessionMgr := utils.InitSessionManager()
 
+	// Initialize user store
+	if err := utils.InitUserStore(); err != nil {
+		log.Fatal("Failed to initialize user store:", err)
+	}
+
 	if err := utils.Garage.LoadConfig(); err != nil {
 		log.Println("Cannot load garage config!", err)
 	}
