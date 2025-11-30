@@ -23,6 +23,13 @@ var Garage = &garage{}
 
 func (g *garage) LoadConfig() error {
 	path := GetEnv("CONFIG_PATH", "/etc/garage.toml")
+	
+	// Skip loading config if path is empty
+	if path == "" {
+		log.Println("CONFIG_PATH is empty, skipping garage.toml loading")
+		return nil
+	}
+	
 	data, err := os.ReadFile(path)
 
 	if err != nil {

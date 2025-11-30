@@ -20,6 +20,9 @@ func HandleApiRouter() *http.ServeMux {
 
 	buckets := &Buckets{}
 	router.HandleFunc("GET /buckets", buckets.GetAll)
+	router.HandleFunc("GET /buckets/lifecycle", buckets.GetLifecycleConfiguration)
+	router.HandleFunc("PUT /buckets/lifecycle", buckets.PutLifecycleConfiguration)
+	router.HandleFunc("DELETE /buckets/lifecycle", buckets.DeleteLifecycleConfiguration)
 
 	browse := &Browse{}
 	router.HandleFunc("GET /browse/{bucket}", browse.GetObjects)
@@ -27,8 +30,10 @@ func HandleApiRouter() *http.ServeMux {
 	router.HandleFunc("PUT /browse/{bucket}/{key...}", browse.PutObject)
 	router.HandleFunc("DELETE /browse/{bucket}/{key...}", browse.DeleteObject)
 
-	// Proxy request to garage api endpoint
-	router.HandleFunc("/", ProxyHandler)
+	// Proxy request to garage api endpoint (only v0, v1, v2 prefixes)
+	router.HandleFunc("/v0/{path...}", ProxyHandler)
+	router.HandleFunc("/v1/{path...}", ProxyHandler)
+	router.HandleFunc("/v2/{path...}", ProxyHandler)
 
 	mux.Handle("/", middleware.AuthMiddleware(router))
 	return mux

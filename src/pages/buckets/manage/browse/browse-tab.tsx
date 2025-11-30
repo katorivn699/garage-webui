@@ -7,6 +7,7 @@ import ObjectListNavigator from "./object-list-navigator";
 import Actions from "./actions";
 import { useBucketContext } from "../context";
 import ShareDialog from "./share-dialog";
+import DeleteDialog from "./delete-dialog";
 
 const getInitialPrefixes = (searchParams: URLSearchParams) => {
   const prefix = searchParams.get("prefix");
@@ -65,6 +66,7 @@ const BrowseTab = () => {
         />
 
         <ShareDialog />
+        <DeleteDialog />
       </Card>
     </div>
   );

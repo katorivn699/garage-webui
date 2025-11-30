@@ -1,6 +1,7 @@
 package router
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -212,6 +213,178 @@ func (b *Browse) PutObject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseSuccess(w, result)
+}
+
+// CreateMultipartUpload initiates a multipart upload
+func (b *Browse) CreateMultipartUpload(w http.ResponseWriter, r *http.Request) {
+	bucket := r.PathValue("bucket")
+	key := r.PathValue("key")
+
+	var body struct {
+		ContentType string `json:"contentType"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		utils.ResponseError(w, fmt.Errorf("invalid request body: %w", err))
+		return
+	}
+
+	// Default content type if not provided
+	if body.ContentType == "" {
+		body.ContentType = "application/octet-stream"
+	}
+
+	client, err := getS3Client(bucket)
+	if err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
+
+	// Create input for multipart upload
+	input := &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	// Only set ContentType if it's not empty
+	if body.ContentType != "" {
+		input.ContentType = aws.String(body.ContentType)
+	}
+
+	result, err := client.CreateMultipartUpload(context.Background(), input)
+
+	if err != nil {
+		utils.ResponseError(w, fmt.Errorf("cannot create multipart upload: %w", err))
+		return
+	}
+
+	utils.ResponseSuccess(w, map[string]interface{}{
+		"uploadId": *result.UploadId,
+		"key":      *result.Key,
+	})
+}
+
+// UploadPart uploads a part in a multipart upload
+func (b *Browse) UploadPart(w http.ResponseWriter, r *http.Request) {
+	bucket := r.PathValue("bucket")
+	key := r.PathValue("key")
+	uploadId := r.URL.Query().Get("uploadId")
+	partNumberStr := r.URL.Query().Get("partNumber")
+
+	partNumber, err := strconv.Atoi(partNumberStr)
+	if err != nil {
+		utils.ResponseError(w, fmt.Errorf("invalid part number: %w", err))
+		return
+	}
+
+	client, err := getS3Client(bucket)
+	if err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
+
+	// Read the part data from request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		utils.ResponseError(w, fmt.Errorf("cannot read request body: %w", err))
+		return
+	}
+	defer r.Body.Close()
+
+	result, err := client.UploadPart(context.Background(), &s3.UploadPartInput{
+		Bucket:        aws.String(bucket),
+		Key:           aws.String(key),
+		UploadId:      aws.String(uploadId),
+		PartNumber:    aws.Int32(int32(partNumber)),
+		Body:          bytes.NewReader(body),
+		ContentLength: aws.Int64(int64(len(body))),
+	})
+
+	if err != nil {
+		utils.ResponseError(w, fmt.Errorf("cannot upload part: %w", err))
+		return
+	}
+
+	utils.ResponseSuccess(w, map[string]interface{}{
+		"etag":       *result.ETag,
+		"partNumber": partNumber,
+	})
+}
+
+// CompleteMultipartUpload completes a multipart upload
+func (b *Browse) CompleteMultipartUpload(w http.ResponseWriter, r *http.Request) {
+	bucket := r.PathValue("bucket")
+	key := r.PathValue("key")
+	uploadId := r.URL.Query().Get("uploadId")
+
+	var body struct {
+		Parts []struct {
+			ETag       string `json:"etag"`
+			PartNumber int    `json:"partNumber"`
+		} `json:"parts"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		utils.ResponseError(w, fmt.Errorf("invalid request body: %w", err))
+		return
+	}
+
+	client, err := getS3Client(bucket)
+	if err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
+
+	// Convert parts to S3 format
+	parts := make([]types.CompletedPart, len(body.Parts))
+	for i, part := range body.Parts {
+		parts[i] = types.CompletedPart{
+			ETag:       aws.String(part.ETag),
+			PartNumber: aws.Int32(int32(part.PartNumber)),
+		}
+	}
+
+	result, err := client.CompleteMultipartUpload(context.Background(), &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadId),
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: parts,
+		},
+	})
+
+	if err != nil {
+		utils.ResponseError(w, fmt.Errorf("cannot complete multipart upload: %w", err))
+		return
+	}
+
+	utils.ResponseSuccess(w, result)
+}
+
+// AbortMultipartUpload aborts a multipart upload
+func (b *Browse) AbortMultipartUpload(w http.ResponseWriter, r *http.Request) {
+	bucket := r.PathValue("bucket")
+	key := r.PathValue("key")
+	uploadId := r.URL.Query().Get("uploadId")
+
+	client, err := getS3Client(bucket)
+	if err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
+
+	_, err = client.AbortMultipartUpload(context.Background(), &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadId),
+	})
+
+	if err != nil {
+		utils.ResponseError(w, fmt.Errorf("cannot abort multipart upload: %w", err))
+		return
+	}
+
+	utils.ResponseSuccess(w, map[string]bool{"aborted": true})
 }
 
 func (b *Browse) DeleteObject(w http.ResponseWriter, r *http.Request) {

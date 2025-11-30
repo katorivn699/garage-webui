@@ -11,7 +11,9 @@ import { createFolderSchema, CreateFolderSchema } from "./schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InputField } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import UploadProgressDialog, { UploadFile } from "./upload-progress-dialog";
+import { API_URL } from "@/lib/api";
 
 type Props = {
   prefix: string;
@@ -20,14 +22,18 @@ type Props = {
 const Actions = ({ prefix }: Props) => {
   const { bucketName } = useBucketContext();
   const queryClient = useQueryClient();
+  const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const putObject = usePutObject(bucketName, {
-    onSuccess: () => {
-      toast.success("File uploaded!");
-      queryClient.invalidateQueries({ queryKey: ["browse", bucketName] });
-    },
-    onError: handleError,
-  });
+  const handleUploadComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ["browse", bucketName] });
+  };
+
+  const handleCloseDialog = () => {
+    onClose();
+    // Clear upload files after dialog is closed
+    setTimeout(() => setUploadFiles([]), 300);
+  };
 
   const onUploadFile = () => {
     const input = document.createElement("input");
@@ -45,14 +51,122 @@ const Actions = ({ prefix }: Props) => {
         return;
       }
 
-      for (const file of files) {
-        const key = prefix + file.name;
-        putObject.mutate({ key, file });
-      }
+      // Initialize upload files
+      const initialFiles: UploadFile[] = Array.from(files).map((file) => ({
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status: "pending",
+      }));
+
+      setUploadFiles(initialFiles);
+      onOpen();
+
+      // Start uploading files with parallel uploads (max 3 concurrent)
+      uploadFilesParallel(Array.from(files), initialFiles);
     };
 
     input.click();
     input.remove();
+  };
+
+  const uploadFilesParallel = async (
+    files: File[],
+    uploadFileStates: UploadFile[]
+  ) => {
+    const MAX_CONCURRENT = 3; // Upload 3 files at a time
+    const uploadQueue = [...files];
+    const activeUploads = new Set<Promise<void>>();
+
+    const uploadFile = async (file: File, index: number) => {
+      const key = prefix + file.name;
+
+      // Update status to uploading
+      setUploadFiles((prev) =>
+        prev.map((f, idx) =>
+          idx === index ? { ...f, status: "uploading" } : f
+        )
+      );
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", `${API_URL}/browse/${bucketName}/${key}`);
+          xhr.withCredentials = true;
+
+          xhr.upload.addEventListener("progress", (e) => {
+            if (e.lengthComputable) {
+              const progress = (e.loaded / e.total) * 100;
+              setUploadFiles((prev) =>
+                prev.map((f, idx) =>
+                  idx === index ? { ...f, progress } : f
+                )
+              );
+            }
+          });
+
+          xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              setUploadFiles((prev) =>
+                prev.map((f, idx) =>
+                  idx === index ? { ...f, status: "success", progress: 100 } : f
+                )
+              );
+              resolve();
+            } else {
+              const errorMsg = xhr.responseText || "Upload failed";
+              setUploadFiles((prev) =>
+                prev.map((f, idx) =>
+                  idx === index ? { ...f, status: "error", error: errorMsg } : f
+                )
+              );
+              reject(new Error(errorMsg));
+            }
+          });
+
+          xhr.addEventListener("error", () => {
+            setUploadFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === index
+                  ? { ...f, status: "error", error: "Network error" }
+                  : f
+              )
+            );
+            reject(new Error("Network error"));
+          });
+
+          xhr.send(formData);
+        });
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+      }
+    };
+
+    // Process files with concurrency limit
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Wait if we've reached max concurrent uploads
+      if (activeUploads.size >= MAX_CONCURRENT) {
+        await Promise.race(activeUploads);
+      }
+
+      // Start upload
+      const uploadPromise = uploadFile(file, i).finally(() => {
+        activeUploads.delete(uploadPromise);
+      });
+      
+      activeUploads.add(uploadPromise);
+    }
+
+    // Wait for all remaining uploads to complete
+    await Promise.all(activeUploads);
+
+    // All uploads completed
+    handleUploadComplete();
   };
 
   return (
@@ -66,6 +180,12 @@ const Actions = ({ prefix }: Props) => {
         onClick={onUploadFile}
       />
       {/* <Button icon={EllipsisVertical} color="ghost" /> */}
+
+      <UploadProgressDialog
+        files={uploadFiles}
+        isOpen={isOpen}
+        onClose={handleCloseDialog}
+      />
     </>
   );
 };

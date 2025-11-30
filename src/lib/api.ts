@@ -5,6 +5,7 @@ type FetchOptions = Omit<RequestInit, "headers" | "body"> & {
   params?: Record<string, any>;
   headers?: Record<string, string>;
   body?: any;
+  onUploadProgress?: (progress: number) => void;
 };
 
 export const API_URL = BASE_PATH + "/api";
@@ -21,6 +22,70 @@ export class APIError extends Error {
 
 const api = {
   async fetch<T = any>(url: string, options?: Partial<FetchOptions>) {
+    // Use XMLHttpRequest for upload progress tracking
+    if (options?.onUploadProgress && options?.body instanceof FormData) {
+      return new Promise<T>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const _url = new URL(API_URL + url, window.location.origin);
+
+        if (options?.params) {
+          Object.entries(options.params).forEach(([key, value]) => {
+            _url.searchParams.set(key, String(value));
+          });
+        }
+
+        xhr.open(options.method || "POST", _url.toString());
+        xhr.withCredentials = true;
+
+        // Set headers
+        if (options.headers) {
+          Object.entries(options.headers).forEach(([key, value]) => {
+            xhr.setRequestHeader(key, value);
+          });
+        }
+
+        // Upload progress
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable && options.onUploadProgress) {
+            const progress = (e.loaded / e.total) * 100;
+            options.onUploadProgress(progress);
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          const isJson = xhr
+            .getResponseHeader("Content-Type")
+            ?.includes("application/json");
+          const data = isJson ? JSON.parse(xhr.responseText) : xhr.responseText;
+
+          if (xhr.status === 401 && !url.startsWith("/auth")) {
+            window.location.href = utils.url("/auth/login");
+            reject(new APIError("unauthorized", xhr.status));
+            return;
+          }
+
+          if (xhr.status < 200 || xhr.status >= 300) {
+            const message = isJson
+              ? data?.message
+              : typeof data === "string"
+              ? data
+              : xhr.statusText;
+            reject(new APIError(message, xhr.status));
+            return;
+          }
+
+          resolve(data as T);
+        });
+
+        xhr.addEventListener("error", () => {
+          reject(new APIError("Network error", 0));
+        });
+
+        xhr.send(options.body);
+      });
+    }
+
+    // Standard fetch for non-upload requests
     const headers: Record<string, string> = {};
     const _url = new URL(API_URL + url, window.location.origin);
 

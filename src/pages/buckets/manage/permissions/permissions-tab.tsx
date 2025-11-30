@@ -7,9 +7,11 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { handleError } from "@/lib/utils";
 import { useBucketContext } from "../context";
+import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
 
 const PermissionsTab = () => {
   const { bucket, refetch } = useBucketContext();
+  const openConfirmDialog = useConfirmDialogStore((state) => state.open);
 
   const denyKey = useDenyKey(bucket.id, {
     onSuccess: () => {
@@ -28,13 +30,20 @@ const PermissionsTab = () => {
     );
   }, [bucket?.keys]);
 
-  const onRemove = (id: string) => {
-    if (window.confirm("Are you sure you want to remove this key?")) {
-      denyKey.mutate({
-        keyId: id,
-        permissions: { read: true, write: true, owner: true },
-      });
-    }
+  const onRemove = (id: string, keyName: string) => {
+    openConfirmDialog({
+      title: "Remove Key",
+      message: "Are you sure you want to remove this key's access to the bucket?",
+      confirmText: "Remove",
+      confirmColor: "error",
+      itemName: keyName,
+      onConfirm: () => {
+        denyKey.mutate({
+          keyId: id,
+          permissions: { read: true, write: true, owner: true },
+        });
+      },
+    });
   };
 
   return (
@@ -86,7 +95,7 @@ const PermissionsTab = () => {
                   </span>
                   <Button
                     icon={Trash}
-                    onClick={() => onRemove(key.accessKeyId)}
+                    onClick={() => onRemove(key.accessKeyId, key.name || key.accessKeyId)}
                   />
                 </Table.Row>
               ))}

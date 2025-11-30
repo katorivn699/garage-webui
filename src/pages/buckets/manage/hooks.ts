@@ -5,7 +5,7 @@ import {
   UseMutationOptions,
   useQuery,
 } from "@tanstack/react-query";
-import { Bucket, Permissions } from "../types";
+import { Bucket, LifecycleConfiguration, Permissions } from "../types";
 
 export const useBucket = (id?: string | null) => {
   return useQuery({
@@ -110,3 +110,48 @@ export const useRemoveBucket = (
     ...options,
   });
 };
+
+// Lifecycle Configuration Hooks
+export const useLifecycleConfiguration = (bucket?: string) => {
+  const query = useQuery({
+    queryKey: ["lifecycle", bucket],
+    queryFn: () =>
+      api.get<LifecycleConfiguration>("/buckets/lifecycle", {
+        params: { bucket },
+      }),
+    enabled: !!bucket,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: { rules: LifecycleConfiguration["rules"] }) =>
+      api.put<{ message: string }>("/buckets/lifecycle", {
+        params: { bucket },
+        body: data,
+      }),
+    onSuccess: () => {
+      query.refetch();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      api.delete<{ message: string }>("/buckets/lifecycle", {
+        params: { bucket },
+      }),
+    onSuccess: () => {
+      query.refetch();
+    },
+  });
+
+  return {
+    data: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    updateLifecycle: updateMutation.mutateAsync,
+    deleteLifecycle: deleteMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
+};
+

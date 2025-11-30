@@ -13,9 +13,11 @@ import { InputField } from "@/components/ui/input";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBucketContext } from "../context";
+import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
 
 const AliasesSection = () => {
   const { bucket: data } = useBucketContext();
+  const openConfirmDialog = useConfirmDialogStore((state) => state.open);
 
   const queryClient = useQueryClient();
   const removeAlias = useRemoveAlias(data?.id, {
@@ -27,9 +29,16 @@ const AliasesSection = () => {
   });
 
   const onRemoveAlias = (alias: string) => {
-    if (window.confirm("Are you sure you want to remove this alias?")) {
-      removeAlias.mutate(alias);
-    }
+    openConfirmDialog({
+      title: "Remove Alias",
+      message: "Are you sure you want to remove this alias from the bucket?",
+      confirmText: "Remove",
+      confirmColor: "error",
+      itemName: alias,
+      onConfirm: () => {
+        removeAlias.mutate(alias);
+      },
+    });
   };
 
   const aliases = data?.globalAliases || [];

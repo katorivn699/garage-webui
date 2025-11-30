@@ -52,3 +52,53 @@ type WebsiteConfig struct {
 	IndexDocument string `json:"indexDocument"`
 	ErrorDocument string `json:"errorDocument"`
 }
+
+// Lifecycle Configuration Structs
+type LifecycleConfiguration struct {
+	Rules []LifecycleRule `json:"rules"`
+}
+
+type LifecycleRule struct {
+	ID                             string                          `json:"id"`
+	Status                         string                          `json:"status"` // "Enabled" or "Disabled"
+	Prefix                         *string                         `json:"prefix,omitempty"`
+	Filter                         *LifecycleFilter                `json:"filter,omitempty"`
+	Expiration                     *LifecycleExpiration            `json:"expiration,omitempty"`
+	NoncurrentVersionExpiration    *NoncurrentVersionExpiration    `json:"noncurrentVersionExpiration,omitempty"`
+	AbortIncompleteMultipartUpload *AbortIncompleteMultipartUpload `json:"abortIncompleteMultipartUpload,omitempty"`
+}
+
+type LifecycleFilter struct {
+	Prefix string            `json:"prefix,omitempty"`
+	Tags   []LifecycleTag    `json:"tags,omitempty"`
+	And    *LifecycleFilterAnd `json:"and,omitempty"`
+}
+
+type LifecycleFilterAnd struct {
+	Prefix string         `json:"prefix,omitempty"`
+	Tags   []LifecycleTag `json:"tags,omitempty"`
+}
+
+type LifecycleTag struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type LifecycleExpiration struct {
+	Days                      *int32  `json:"days,omitempty"`
+	Date                      *string `json:"date,omitempty"`
+	ExpiredObjectDeleteMarker *bool   `json:"expiredObjectDeleteMarker,omitempty"`
+}
+
+type NoncurrentVersionExpiration struct {
+	NoncurrentDays *int32 `json:"noncurrentDays,omitempty"`
+}
+
+type AbortIncompleteMultipartUpload struct {
+	DaysAfterInitiation *int32 `json:"daysAfterInitiation,omitempty"`
+}
+
+// Request/Response structs for lifecycle endpoints
+type PutLifecycleRequest struct {
+	Rules []LifecycleRule `json:"rules"`
+}

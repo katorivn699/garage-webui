@@ -45,3 +45,48 @@ export type Quotas = {
   maxSize: null;
   maxObjects: null;
 };
+
+// Lifecycle Configuration Types
+export type LifecycleConfiguration = {
+  rules: LifecycleRule[];
+};
+
+export type LifecycleRule = {
+  id: string;
+  status: 'Enabled' | 'Disabled';
+  prefix?: string;
+  filter?: LifecycleFilter;
+  expiration?: LifecycleExpiration;
+  noncurrentVersionExpiration?: NoncurrentVersionExpiration;
+  abortIncompleteMultipartUpload?: AbortIncompleteMultipartUpload;
+};
+
+export type LifecycleFilter = {
+  prefix?: string;
+  tags?: LifecycleTag[];
+  and?: LifecycleFilterAnd;
+};
+
+export type LifecycleFilterAnd = {
+  prefix?: string;
+  tags?: LifecycleTag[];
+};
+
+export type LifecycleTag = {
+  key: string;
+  value: string;
+};
+
+export type LifecycleExpiration = {
+  days?: number;
+  date?: string;
+  expiredObjectDeleteMarker?: boolean;
+};
+
+export type NoncurrentVersionExpiration = {
+  noncurrentDays?: number;
+};
+
+export type AbortIncompleteMultipartUpload = {
+  daysAfterInitiation?: number;
+};

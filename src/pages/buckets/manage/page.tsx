@@ -14,6 +14,7 @@ import MenuButton from "./components/menu-button";
 import BrowseTab from "./browse/browse-tab";
 import { BucketContext } from "./context";
 import { Alert, Loading } from "react-daisyui";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const tabs: Tab[] = [
   {
@@ -71,6 +72,8 @@ const ManageBucketPage = () => {
           </BucketContext.Provider>
         </div>
       )}
+
+      <ConfirmDialog />
     </>
   );
 };

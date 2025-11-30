@@ -21,9 +21,13 @@ export const useBrowseObjects = (
   });
 };
 
+export type PutObjectOptions = UseMutationOptions<any, Error, PutObjectPayload> & {
+  onProgress?: (progress: number) => void;
+};
+
 export const usePutObject = (
   bucket: string,
-  options?: UseMutationOptions<any, Error, PutObjectPayload>
+  options?: PutObjectOptions
 ) => {
   return useMutation({
     mutationFn: async (body) => {
@@ -32,7 +36,10 @@ export const usePutObject = (
         formData.append("file", body.file);
       }
 
-      return api.put(`/browse/${bucket}/${body.key}`, { body: formData });
+      return api.put(`/browse/${bucket}/${body.key}`, { 
+        body: formData,
+        onUploadProgress: options?.onProgress,
+      });
     },
     ...options,
   });

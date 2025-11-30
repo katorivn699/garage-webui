@@ -5,10 +5,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useRemoveBucket } from "../hooks";
 import { toast } from "sonner";
 import { handleError } from "@/lib/utils";
+import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
 
 const MenuButton = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const openConfirmDialog = useConfirmDialogStore((state) => state.open);
 
   const removeBucket = useRemoveBucket({
     onSuccess: () => {
@@ -19,9 +21,17 @@ const MenuButton = () => {
   });
 
   const onRemove = () => {
-    if (window.confirm("Are you sure you want to remove this bucket?")) {
-      removeBucket.mutate(id!);
-    }
+    openConfirmDialog({
+      title: "Remove Bucket",
+      message: "Are you sure you want to remove this bucket? All data in this bucket will be permanently deleted.",
+      confirmText: "Remove Bucket",
+      confirmColor: "error",
+      itemName: id,
+      warningText: "This action cannot be undone.",
+      onConfirm: () => {
+        removeBucket.mutate(id!);
+      },
+    });
   };
 
   return (
