@@ -5,7 +5,6 @@ import (
 	"khairul169/garage-webui/schema"
 	"khairul169/garage-webui/utils"
 	"net/http"
-	"strings"
 )
 
 func AuthMiddleware(next http.Handler) http.Handler {

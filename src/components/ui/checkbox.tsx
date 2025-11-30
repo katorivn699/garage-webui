@@ -55,7 +55,7 @@ export const CheckboxField = <T extends FieldValues>({
       render={(field) => {
         // Handle array values (like bucket_permissions)
         if (value !== undefined) {
-          const fieldValue = Array.isArray(field.value) ? field.value : [];
+          const fieldValue: string[] = Array.isArray(field.value) ? field.value : [];
           const isChecked = fieldValue.includes(value);
           
           return (
@@ -66,7 +66,7 @@ export const CheckboxField = <T extends FieldValues>({
               onChange={(e) => {
                 const newValue = e.target.checked
                   ? [...fieldValue, value]
-                  : fieldValue.filter((v: string) => v !== value);
+                  : fieldValue.filter((v) => v !== value);
                 field.onChange(newValue);
               }}
             />
