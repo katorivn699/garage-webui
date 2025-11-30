@@ -31,16 +31,11 @@ jobs:
       - name: Build frontend
         run: pnpm run build
 
-      - name: Move frontend to backend
-        run: |
-          rm -rf backend/ui/dist
-          cp -r dist backend/ui/dist
-
-      - name: Upload frontend artifacts
+      - name: Upload frontend build
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-dist
-          path: backend/ui/dist/
+          name: frontend-build
+          path: dist/
 
   build-backend:
     name: Build Backend
@@ -79,10 +74,10 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Download frontend artifacts
+      - name: Download frontend build
         uses: actions/download-artifact@v4
         with:
-          name: frontend-dist
+          name: frontend-build
           path: backend/ui/dist/
 
       - name: Build backend
