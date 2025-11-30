@@ -31,11 +31,16 @@ jobs:
       - name: Build frontend
         run: pnpm run build
 
+      - name: Move frontend to backend
+        run: |
+          rm -rf backend/ui/dist
+          cp -r dist backend/ui/dist
+
       - name: Upload frontend artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: dist/
+          path: backend/ui/dist/
 
   build-backend:
     name: Build Backend
@@ -78,7 +83,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: dist/
+          path: backend/ui/dist/
 
       - name: Build backend
         working-directory: backend
@@ -91,14 +96,13 @@ jobs:
           if [ "${{ matrix.goos }}" = "windows" ]; then
             OUTPUT_NAME="${OUTPUT_NAME}.exe"
           fi
-          go build -ldflags="-s -w" -o "../${OUTPUT_NAME}" .
+          go build -tags prod -ldflags="-s -w" -o "../${OUTPUT_NAME}" .
 
       - name: Create tarball (Unix)
         if: matrix.os != 'windows'
         run: |
           tar -czf "garage-webui-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" \
             "garage-webui-${{ matrix.os }}-${{ matrix.arch }}" \
-            dist/ \
             README.md \
             LICENSE \
             LIFECYCLE_FEATURE.md
@@ -108,7 +112,6 @@ jobs:
         run: |
           7z a "garage-webui-${{ matrix.os }}-${{ matrix.arch }}.zip" \
             "garage-webui-${{ matrix.os }}-${{ matrix.arch }}.exe" \
-            dist/ \
             README.md \
             LICENSE \
             LIFECYCLE_FEATURE.md
