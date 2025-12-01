@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "react-daisyui";
 import { LifecycleRule } from "../../types";
-import Toggle from "@/components/ui/toggle";
 
 type Props = {
   rule: LifecycleRule | null;
@@ -18,6 +17,20 @@ const LifecycleRuleForm = ({ rule, onSave, onCancel }: Props) => {
       expiration: { days: 7 },
     }
   );
+
+  // Sync form data when rule prop changes
+  useEffect(() => {
+    if (rule) {
+      setFormData(rule);
+    } else {
+      setFormData({
+        id: "",
+        status: "Enabled",
+        prefix: "",
+        expiration: { days: 7 },
+      });
+    }
+  }, [rule]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +58,17 @@ const LifecycleRuleForm = ({ rule, onSave, onCancel }: Props) => {
         ? { daysAfterInitiation: days }
         : undefined,
     }));
+  };
+
+  const handleAbortMultipartToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateAbortMultipart(e.target.checked ? 7 : null);
+  };
+
+  const handleAbortMultipartDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0) {
+      updateAbortMultipart(value);
+    }
   };
 
   return (
@@ -113,9 +137,11 @@ const LifecycleRuleForm = ({ rule, onSave, onCancel }: Props) => {
 
       <div className="form-control">
         <label className="label cursor-pointer justify-start gap-4">
-          <Toggle
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
             checked={!!formData.abortIncompleteMultipartUpload}
-            onChange={(checked) => updateAbortMultipart(checked ? 7 : null)}
+            onChange={handleAbortMultipartToggle}
           />
           <span className="label-text">
             Abort incomplete multipart uploads
@@ -135,7 +161,7 @@ const LifecycleRuleForm = ({ rule, onSave, onCancel }: Props) => {
             value={
               formData.abortIncompleteMultipartUpload.daysAfterInitiation || 7
             }
-            onChange={(e) => updateAbortMultipart(parseInt(e.target.value))}
+            onChange={handleAbortMultipartDaysChange}
           />
         </div>
       )}

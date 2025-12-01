@@ -111,12 +111,17 @@ jobs:
             LICENSE \
             LIFECYCLE_FEATURE.md
 
-      - name: Upload artifacts
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: garage-webui-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            garage-webui-${{ matrix.os }}-${{ matrix.arch }}*
+          name: binary-${{ matrix.os }}-${{ matrix.arch }}
+          path: garage-webui-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-${{ matrix.os }}-${{ matrix.arch }}
+          path: garage-webui-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.os == 'windows' && 'zip' || 'tar.gz' }}
 
   release:
     name: Create Release
@@ -135,8 +140,10 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release-files
-          find artifacts/ -name "*.tar.gz" -exec mv {} release-files/ \;
-          find artifacts/ -name "*.zip" -exec mv {} release-files/ \;
+          # Copy binary files
+          find artifacts/binary-* -type f -exec cp {} release-files/ \;
+          # Copy archive files
+          find artifacts/archive-* -type f -exec cp {} release-files/ \;
           ls -lh release-files/
 
       - name: Create Release
