@@ -132,10 +132,17 @@ jobs:
         with:
           path: artifacts/
 
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find artifacts/ -name "*.tar.gz" -exec mv {} release-files/ \;
+          find artifacts/ -name "*.zip" -exec mv {} release-files/ \;
+          ls -lh release-files/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/**/*
+          files: release-files/*
           draft: false
           prerelease: false
           generate_release_notes: true
