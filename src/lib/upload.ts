@@ -1,7 +1,8 @@
 import { API_URL } from "./api";
 
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
-const MIN_MULTIPART_SIZE = 10 * 1024 * 1024; // Use multipart for files > 10MB
+// Use 50MB chunks to stay under Cloudflare's 100MB limit per request
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB per chunk
+const MIN_MULTIPART_SIZE = 50 * 1024 * 1024; // Use multipart for files > 50MB
 
 type UploadPart = {
   etag: string;

@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { InputField } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 import UploadProgressDialog, { UploadFile } from "./upload-progress-dialog";
-import { API_URL } from "@/lib/api";
+import { uploadFile } from "@/lib/upload";
 
 type Props = {
   prefix: string;
@@ -77,7 +77,7 @@ const Actions = ({ prefix }: Props) => {
     const MAX_CONCURRENT = 3; // Upload 3 files at a time
     const activeUploads = new Set<Promise<void>>();
 
-    const uploadFile = async (file: File, index: number) => {
+    const uploadSingleFile = async (file: File, index: number) => {
       const key = prefix + file.name;
 
       // Update status to uploading
@@ -88,58 +88,30 @@ const Actions = ({ prefix }: Props) => {
       );
 
       try {
-        await new Promise<void>((resolve, reject) => {
-          const formData = new FormData();
-          formData.append("file", file);
-
-          const xhr = new XMLHttpRequest();
-          xhr.open("PUT", `${API_URL}/browse/${bucketName}/${key}`);
-          xhr.withCredentials = true;
-
-          xhr.upload.addEventListener("progress", (e) => {
-            if (e.lengthComputable) {
-              const progress = (e.loaded / e.total) * 100;
-              setUploadFiles((prev) =>
-                prev.map((f, idx) =>
-                  idx === index ? { ...f, progress } : f
-                )
-              );
-            }
-          });
-
-          xhr.addEventListener("load", () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              setUploadFiles((prev) =>
-                prev.map((f, idx) =>
-                  idx === index ? { ...f, status: "success", progress: 100 } : f
-                )
-              );
-              resolve();
-            } else {
-              const errorMsg = xhr.responseText || "Upload failed";
-              setUploadFiles((prev) =>
-                prev.map((f, idx) =>
-                  idx === index ? { ...f, status: "error", error: errorMsg } : f
-                )
-              );
-              reject(new Error(errorMsg));
-            }
-          });
-
-          xhr.addEventListener("error", () => {
+        // Use uploadFile function which automatically handles multipart for large files
+        await uploadFile(bucketName, key, file, {
+          onProgress: (progress) => {
             setUploadFiles((prev) =>
               prev.map((f, idx) =>
-                idx === index
-                  ? { ...f, status: "error", error: "Network error" }
-                  : f
+                idx === index ? { ...f, progress } : f
               )
             );
-            reject(new Error("Network error"));
-          });
-
-          xhr.send(formData);
+          },
         });
+
+        // Mark as success
+        setUploadFiles((prev) =>
+          prev.map((f, idx) =>
+            idx === index ? { ...f, status: "success", progress: 100 } : f
+          )
+        );
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Upload failed";
+        setUploadFiles((prev) =>
+          prev.map((f, idx) =>
+            idx === index ? { ...f, status: "error", error: errorMsg } : f
+          )
+        );
         console.error(`Failed to upload ${file.name}:`, error);
       }
     };
@@ -154,7 +126,7 @@ const Actions = ({ prefix }: Props) => {
       }
 
       // Start upload
-      const uploadPromise = uploadFile(file, i).finally(() => {
+      const uploadPromise = uploadSingleFile(file, i).finally(() => {
         activeUploads.delete(uploadPromise);
       });
       

@@ -46,7 +46,15 @@ func HandleApiRouter() *http.ServeMux {
 	browseRouter.HandleFunc("GET /browse/{bucket}/{key...}", browse.GetOneObject)
 	browseRouter.HandleFunc("PUT /browse/{bucket}/{key...}", browse.PutObject)
 	browseRouter.HandleFunc("DELETE /browse/{bucket}/{key...}", browse.DeleteObject)
+	
+	// Multipart upload routes
+	browseRouter.HandleFunc("POST /multipart/{bucket}/{key...}", browse.CreateMultipartUpload)
+	browseRouter.HandleFunc("PUT /multipart/{bucket}/{key...}", browse.UploadPart)
+	browseRouter.HandleFunc("POST /multipart/complete/{bucket}/{key...}", browse.CompleteMultipartUpload)
+	browseRouter.HandleFunc("DELETE /multipart/{bucket}/{key...}", browse.AbortMultipartUpload)
+	
 	router.Handle("/browse/", middleware.BucketPermissionMiddleware(browseRouter))
+	router.Handle("/multipart/", middleware.BucketPermissionMiddleware(browseRouter))
 
 	// Proxy request to garage api endpoint (only v0, v1, v2 prefixes)
 	router.HandleFunc("/v0/{path...}", ProxyHandler)
