@@ -72,8 +72,27 @@ func (s *UserStore) load() error {
 		return err
 	}
 
+	needsSave := false
 	for _, user := range users {
+		// If user doesn't have password hash, set default password
+		if user.PasswordHash == "" {
+			defaultPass := "admin"
+			if user.Username != "admin" {
+				defaultPass = user.Username
+			}
+			hash, err := bcrypt.GenerateFromPassword([]byte(defaultPass), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+			user.PasswordHash = string(hash)
+			needsSave = true
+		}
 		s.users[user.ID] = user
+	}
+
+	// Save if we added password hashes
+	if needsSave {
+		s.save()
 	}
 
 	return nil

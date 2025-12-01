@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import OverviewTab from "./overview/overview-tab";
 import PermissionsTab from "./permissions/permissions-tab";
-import MenuButton from "./components/menu-button";
 import BrowseTab from "./browse/browse-tab";
 import { BucketContext } from "./context";
 import { Alert, Loading } from "react-daisyui";
@@ -48,7 +47,6 @@ const ManageBucketPage = () => {
       <Page
         title={name || "Manage Bucket"}
         prev="/buckets"
-        actions={data ? <MenuButton /> : undefined}
       />
 
       {isLoading && (

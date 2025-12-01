@@ -1,14 +1,43 @@
 import { Card } from "react-daisyui";
-import { ChartPie, ChartScatter } from "lucide-react";
-import { readableBytes } from "@/lib/utils";
+import { ChartPie, ChartScatter, Trash } from "lucide-react";
+import { readableBytes, handleError } from "@/lib/utils";
 import WebsiteAccessSection from "./overview-website-access";
 import AliasesSection from "./overview-aliases";
 import QuotaSection from "./overview-quota";
 import LifecycleSection from "./overview-lifecycle";
 import { useBucketContext } from "../context";
+import Button from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { useRemoveBucket } from "../hooks";
+import { toast } from "sonner";
+import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
 
 const OverviewTab = () => {
-  const { bucket: data } = useBucketContext();
+  const { bucket: data, bucketName } = useBucketContext();
+  const navigate = useNavigate();
+  const openConfirmDialog = useConfirmDialogStore((state) => state.open);
+
+  const removeBucket = useRemoveBucket({
+    onSuccess: () => {
+      toast.success("Bucket removed!");
+      navigate("/buckets", { replace: true });
+    },
+    onError: handleError,
+  });
+
+  const onRemove = () => {
+    openConfirmDialog({
+      title: "Remove Bucket",
+      message: "Are you sure you want to remove this bucket? All data in this bucket will be permanently deleted.",
+      confirmText: "Remove Bucket",
+      confirmColor: "error",
+      itemName: data?.id,
+      warningText: "This action cannot be undone.",
+      onConfirm: () => {
+        removeBucket.mutate(data?.id!);
+      },
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 items-start">
@@ -19,6 +48,21 @@ const OverviewTab = () => {
         <WebsiteAccessSection />
         <QuotaSection />
         <LifecycleSection />
+
+        <div className="divider my-2"></div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold">Danger Zone</h3>
+          <Button
+            icon={Trash}
+            color="error"
+            variant="outline"
+            onClick={onRemove}
+            className="w-full"
+          >
+            Delete Bucket
+          </Button>
+        </div>
       </Card>
 
       <Card className="card-body order-1 md:order-2">
