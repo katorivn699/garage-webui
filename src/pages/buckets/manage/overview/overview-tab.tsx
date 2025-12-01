@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
 
 const OverviewTab = () => {
-  const { bucket: data, bucketName } = useBucketContext();
+  const { bucket: data } = useBucketContext();
   const navigate = useNavigate();
   const openConfirmDialog = useConfirmDialogStore((state) => state.open);
 
