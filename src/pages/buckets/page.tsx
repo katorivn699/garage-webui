@@ -4,9 +4,11 @@ import { Input } from "react-daisyui";
 import BucketCard from "./components/bucket-card";
 import CreateBucketDialog from "./components/create-bucket-dialog";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const BucketsPage = () => {
   const { data } = useBuckets();
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState("");
 
   const items = useMemo(() => {
@@ -47,7 +49,7 @@ const BucketsPage = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
           <div className="flex-1" />
-          <CreateBucketDialog />
+          {isAdmin && <CreateBucketDialog />}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 items-stretch mt-4 md:mt-8">

@@ -1,12 +1,12 @@
 import Button from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/ui/input";
-import { CheckboxField } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal } from "react-daisyui";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { createUserSchema, CreateUserInput } from "../schema";
 import { useCreateUser } from "../hooks";
-import { useBuckets } from "@/pages/buckets/hooks";
+import BucketPermissionsField from "./bucket-permissions-field";
+import { toast } from "sonner";
 
 type Props = {
   open: boolean;
@@ -25,15 +25,23 @@ export default function CreateUserDialog({ open, onClose }: Props) {
   });
 
   const createUser = useCreateUser();
-  const { data: buckets } = useBuckets();
+  const selectedRole = useWatch({ control: form.control, name: "role" });
 
   const handleSubmit = async (data: CreateUserInput) => {
     try {
-      await createUser.mutateAsync(data);
+      // Clear bucket_permissions if role is admin
+      const submitData = {
+        ...data,
+        bucket_permissions: data.role === "admin" ? [] : (data.bucket_permissions || []),
+      };
+      console.log("Creating user with data:", submitData);
+      await createUser.mutateAsync(submitData);
+      toast.success("User created successfully!");
       form.reset();
       onClose();
     } catch (error) {
-      console.error(error);
+      console.error("Error creating user:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create user");
     }
   };
 
@@ -73,34 +81,14 @@ export default function CreateUserDialog({ open, onClose }: Props) {
             ]}
           />
 
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Bucket Permissions</span>
-            </label>
-            <div className="space-y-2 max-h-48 overflow-y-auto border border-base-300 rounded-lg p-3">
-              {buckets && buckets.length > 0 ? (
-                buckets.map((bucket) => {
-                  const bucketName = bucket.globalAliases?.[0] || bucket.id;
-                  return (
-                    <CheckboxField
-                      key={bucket.id}
-                      form={form}
-                      name="bucket_permissions"
-                      value={bucketName}
-                      label={bucketName}
-                    />
-                  );
-                })
-              ) : (
-                <p className="text-sm text-base-content/60">No buckets available</p>
-              )}
+          {selectedRole !== "admin" && <BucketPermissionsField form={form} />}
+
+          {selectedRole === "admin" && (
+            <div className="alert alert-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span>Admin users have access to all buckets and management features.</span>
             </div>
-            <label className="label">
-              <span className="label-text-alt text-base-content/60">
-                Select which buckets this user can access (admin can access all)
-              </span>
-            </label>
-          </div>
+          )}
 
           <Modal.Actions>
             <Button

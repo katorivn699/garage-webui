@@ -48,7 +48,7 @@ func InitUserStore() error {
 			Role:         schema.RoleAdmin,
 			CreatedAt:    time.Now(),
 			UpdatedAt:    time.Now(),
-			BucketPermissions: []string{},
+			BucketPermissions: []*schema.BucketPermission{},
 		}
 		store.users[id] = admin
 		store.save()
@@ -67,9 +67,56 @@ func (s *UserStore) load() error {
 		return err
 	}
 
+	// First try to unmarshal with new format
 	var users []*schema.User
 	if err := json.Unmarshal(data, &users); err != nil {
-		return err
+		// If failed, try legacy format and migrate
+		var legacyUsers []map[string]interface{}
+		if err := json.Unmarshal(data, &legacyUsers); err != nil {
+			return err
+		}
+
+		// Convert legacy format to new format
+		for _, legacyUser := range legacyUsers {
+			user := &schema.User{
+				ID:           legacyUser["id"].(string),
+				Username:     legacyUser["username"].(string),
+				PasswordHash: legacyUser["password_hash"].(string),
+				Role:         schema.UserRole(legacyUser["role"].(string)),
+			}
+
+			// Parse timestamps
+			if createdAt, ok := legacyUser["created_at"].(string); ok {
+				if t, err := time.Parse(time.RFC3339, createdAt); err == nil {
+					user.CreatedAt = t
+				}
+			}
+			if updatedAt, ok := legacyUser["updated_at"].(string); ok {
+				if t, err := time.Parse(time.RFC3339, updatedAt); err == nil {
+					user.UpdatedAt = t
+				}
+			}
+
+			// Convert old bucket_permissions (string array) to new format (object array)
+			user.BucketPermissions = []*schema.BucketPermission{}
+			if perms, ok := legacyUser["bucket_permissions"].([]interface{}); ok {
+				for _, perm := range perms {
+					if bucketName, ok := perm.(string); ok {
+						// Create permission with all rights for existing permissions
+						user.BucketPermissions = append(user.BucketPermissions, &schema.BucketPermission{
+							BucketName:      bucketName,
+							Read:            true,
+							Write:           true,
+							Delete:          true,
+							ManageLifecycle: true,
+							DeleteBucket:    false, // Don't grant delete bucket by default
+						})
+					}
+				}
+			}
+
+			users = append(users, user)
+		}
 	}
 
 	needsSave := false
@@ -87,10 +134,17 @@ func (s *UserStore) load() error {
 			user.PasswordHash = string(hash)
 			needsSave = true
 		}
+
+		// Ensure BucketPermissions is initialized
+		if user.BucketPermissions == nil {
+			user.BucketPermissions = []*schema.BucketPermission{}
+			needsSave = true
+		}
+
 		s.users[user.ID] = user
 	}
 
-	// Save if we added password hashes
+	// Save if we migrated or added password hashes
 	if needsSave {
 		s.save()
 	}
@@ -179,7 +233,7 @@ func (s *UserStore) Create(req *schema.CreateUserRequest) (*schema.User, error) 
 	}
 
 	if user.BucketPermissions == nil {
-		user.BucketPermissions = []string{}
+		user.BucketPermissions = []*schema.BucketPermission{}
 	}
 
 	s.users[id] = user
@@ -278,9 +332,47 @@ func (s *UserStore) HasBucketPermission(userID, bucket string) bool {
 	}
 
 	// Check if user has permission for this bucket
-	for _, b := range user.BucketPermissions {
-		if b == bucket || b == "*" {
+	for _, perm := range user.BucketPermissions {
+		if perm.BucketName == bucket || perm.BucketName == "*" {
 			return true
+		}
+	}
+
+	return false
+}
+
+// HasBucketPermissionDetailed checks if user has specific permission for a bucket
+func (s *UserStore) HasBucketPermissionDetailed(userID, bucket, action string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	user, ok := s.users[userID]
+	if !ok {
+		return false
+	}
+
+	// Admin has full access to all buckets
+	if user.Role == schema.RoleAdmin {
+		return true
+	}
+
+	// Check if user has specific permission for this bucket
+	for _, perm := range user.BucketPermissions {
+		if perm.BucketName == bucket || perm.BucketName == "*" {
+			switch action {
+			case "read":
+				return perm.Read
+			case "write":
+				return perm.Write
+			case "delete":
+				return perm.Delete
+			case "manage_lifecycle":
+				return perm.ManageLifecycle
+			case "delete_bucket":
+				return perm.DeleteBucket
+			default:
+				return false
+			}
 		}
 	}
 

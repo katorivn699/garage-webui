@@ -5,9 +5,13 @@ import { useBucketContext } from "../context";
 import { useLifecycleConfiguration } from "../hooks";
 import { LifecycleRule } from "../../types";
 import LifecycleRuleForm from "./lifecycle-rule-form";
+import { useAuth } from "@/hooks/useAuth";
 
 const LifecycleSection = () => {
   const { bucketName } = useBucketContext();
+  const { isAdmin, hasPermission } = useAuth();
+  const canManageLifecycle = isAdmin || hasPermission(bucketName, "manage_lifecycle");
+  
   const {
     data: lifecycle,
     isLoading,
@@ -80,17 +84,19 @@ const LifecycleSection = () => {
           <Clock size={18} />
           <h3 className="font-medium">Lifecycle Rules</h3>
         </div>
-        <div className="flex gap-2 px-4">
-          {lifecycle && lifecycle.rules.length > 0 && (
-            <Button size="sm" color="error" onClick={handleClearAll}>
-              Clear All
+        {canManageLifecycle && (
+          <div className="flex gap-2 px-4">
+            {lifecycle && lifecycle.rules.length > 0 && (
+              <Button size="sm" color="error" onClick={handleClearAll}>
+                Clear All
+              </Button>
+            )}
+            <Button size="sm" color="primary" onClick={handleAddRule}>
+              <Plus size={16} />
+              Add Rule
             </Button>
-          )}
-          <Button size="sm" color="primary" onClick={handleAddRule}>
-            <Plus size={16} />
-            Add Rule
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
 
       {isLoading && <p className="text-sm text-base-content/60">Loading...</p>}
@@ -142,22 +148,24 @@ const LifecycleSection = () => {
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  color="ghost"
-                  onClick={() => handleEditRule(rule)}
-                >
-                  <Pencil size={16} />
-                </Button>
-                <Button
-                  size="sm"
-                  color="ghost"
-                  onClick={() => handleDeleteRule(rule.id)}
-                >
-                  <Trash2 size={16} />
-                </Button>
-              </div>
+              {canManageLifecycle && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    color="ghost"
+                    onClick={() => handleEditRule(rule)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    color="ghost"
+                    onClick={() => handleDeleteRule(rule.id)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              )}
             </Card>
           ))}
         </div>

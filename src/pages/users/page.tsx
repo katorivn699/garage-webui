@@ -106,11 +106,18 @@ export default function UsersPage() {
                         All buckets (admin)
                       </span>
                     ) : user.bucket_permissions.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {user.bucket_permissions.map((bucket, i) => (
-                          <span key={i} className="badge badge-sm">
-                            {bucket}
-                          </span>
+                      <div className="flex flex-col gap-1">
+                        {user.bucket_permissions.map((perm, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="badge badge-sm">{perm.bucket_name}</span>
+                            <div className="flex gap-1 text-xs">
+                              {perm.read && <span className="badge badge-xs badge-success">R</span>}
+                              {perm.write && <span className="badge badge-xs badge-info">W</span>}
+                              {perm.delete && <span className="badge badge-xs badge-warning">D</span>}
+                              {perm.manage_lifecycle && <span className="badge badge-xs badge-primary">L</span>}
+                              {perm.delete_bucket && <span className="badge badge-xs badge-error">DB</span>}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : (

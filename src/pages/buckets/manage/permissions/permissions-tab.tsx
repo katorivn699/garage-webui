@@ -8,9 +8,11 @@ import { toast } from "sonner";
 import { handleError } from "@/lib/utils";
 import { useBucketContext } from "../context";
 import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
+import { useAuth } from "@/hooks/useAuth";
 
 const PermissionsTab = () => {
   const { bucket, refetch } = useBucketContext();
+  const { isAdmin } = useAuth();
   const openConfirmDialog = useConfirmDialogStore((state) => state.open);
 
   const denyKey = useDenyKey(bucket.id, {
@@ -51,7 +53,7 @@ const PermissionsTab = () => {
       <Card className="card-body">
         <div className="flex flex-row items-center gap-2">
           <Card.Title className="flex-1 truncate">Access Keys</Card.Title>
-          <AllowKeyDialog currentKeys={keys?.map((key) => key.accessKeyId)} />
+          {isAdmin && <AllowKeyDialog currentKeys={keys?.map((key) => key.accessKeyId)} />}
         </div>
 
         <div className="overflow-x-auto">
@@ -93,10 +95,13 @@ const PermissionsTab = () => {
                       className="cursor-default"
                     />
                   </span>
-                  <Button
-                    icon={Trash}
-                    onClick={() => onRemove(key.accessKeyId, key.name || key.accessKeyId)}
-                  />
+                  {isAdmin && (
+                    <Button
+                      icon={Trash}
+                      onClick={() => onRemove(key.accessKeyId, key.name || key.accessKeyId)}
+                    />
+                  )}
+                  {!isAdmin && <span />}
                 </Table.Row>
               ))}
             </Table.Body>

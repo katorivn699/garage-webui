@@ -81,3 +81,47 @@ func AdminOnlyMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// BucketActionMiddleware checks if user has specific permission for a bucket action
+func BucketActionMiddleware(action string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := utils.Session.Get(r, "user_id")
+			if userID == nil {
+				utils.ResponseErrorStatus(w, errors.New("unauthorized"), http.StatusUnauthorized)
+				return
+			}
+
+			user, err := utils.Users.GetByID(userID.(string))
+			if err != nil {
+				utils.ResponseErrorStatus(w, errors.New("unauthorized"), http.StatusUnauthorized)
+				return
+			}
+
+			// Admin has access to all actions
+			if user.Role == schema.RoleAdmin {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Extract bucket name from path or query parameter
+			bucket := r.PathValue("bucket")
+			if bucket == "" {
+				bucket = r.URL.Query().Get("bucket")
+			}
+
+			if bucket == "" {
+				utils.ResponseErrorStatus(w, errors.New("bucket name required"), http.StatusBadRequest)
+				return
+			}
+
+			// Check specific permission
+			if !utils.Users.HasBucketPermissionDetailed(user.ID, bucket, action) {
+				utils.ResponseErrorStatus(w, errors.New("forbidden: insufficient permissions for this action"), http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}

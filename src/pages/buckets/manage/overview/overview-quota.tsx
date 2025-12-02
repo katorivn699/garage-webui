@@ -7,9 +7,11 @@ import { useUpdateBucket } from "../hooks";
 import { InputField } from "@/components/ui/input";
 import { ToggleField } from "@/components/ui/toggle";
 import { useBucketContext } from "../context";
+import { useAuth } from "@/hooks/useAuth";
 
 const QuotaSection = () => {
   const { bucket: data } = useBucketContext();
+  const { isAdmin } = useAuth();
 
   const form = useForm<QuotaSchema>({
     resolver: zodResolver(quotaSchema),
@@ -45,7 +47,7 @@ const QuotaSection = () => {
 
   return (
     <div className="mt-8">
-      <ToggleField form={form} name="enabled" title="Quotas" label="Enabled" />
+      <ToggleField form={form} name="enabled" title="Quotas" label="Enabled" disabled={!isAdmin} />
 
       {isEnabled && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -54,6 +56,7 @@ const QuotaSection = () => {
             name="maxObjects"
             title="Max Objects"
             type="number"
+            disabled={!isAdmin}
           />
 
           <InputField
@@ -61,6 +64,7 @@ const QuotaSection = () => {
             name="maxSize"
             title="Max Size (GB)"
             type="number"
+            disabled={!isAdmin}
           />
         </div>
       )}

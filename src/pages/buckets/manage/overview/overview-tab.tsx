@@ -11,9 +11,12 @@ import { useNavigate } from "react-router-dom";
 import { useRemoveBucket } from "../hooks";
 import { toast } from "sonner";
 import { useConfirmDialogStore } from "@/stores/confirm-dialog-store";
+import { useAuth } from "@/hooks/useAuth";
 
 const OverviewTab = () => {
-  const { bucket: data } = useBucketContext();
+  const { bucket: data, bucketName } = useBucketContext();
+  const { isAdmin, hasPermission } = useAuth();
+  const canDeleteBucket = isAdmin || hasPermission(bucketName, "delete_bucket");
   const navigate = useNavigate();
   const openConfirmDialog = useConfirmDialogStore((state) => state.open);
 
@@ -49,20 +52,24 @@ const OverviewTab = () => {
         <QuotaSection />
         <LifecycleSection />
 
-        <div className="divider my-2"></div>
+        {canDeleteBucket && (
+          <>
+            <div className="divider my-2"></div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold">Danger Zone</h3>
-          <Button
-            icon={Trash}
-            color="error"
-            variant="outline"
-            onClick={onRemove}
-            className="w-full"
-          >
-            Delete Bucket
-          </Button>
-        </div>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-sm font-semibold">Danger Zone</h3>
+              <Button
+                icon={Trash}
+                color="error"
+                variant="outline"
+                onClick={onRemove}
+                className="w-full"
+              >
+                Delete Bucket
+              </Button>
+            </div>
+          </>
+        )}
       </Card>
 
       <Card className="card-body order-1 md:order-2">
