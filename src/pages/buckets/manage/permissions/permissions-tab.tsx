@@ -95,13 +95,14 @@ const PermissionsTab = () => {
                       className="cursor-default"
                     />
                   </span>
-                  {isAdmin && (
+                  {isAdmin ? (
                     <Button
                       icon={Trash}
                       onClick={() => onRemove(key.accessKeyId, key.name || key.accessKeyId)}
                     />
+                  ) : (
+                    <span />
                   )}
-                  {!isAdmin && <span />}
                 </Table.Row>
               ))}
             </Table.Body>

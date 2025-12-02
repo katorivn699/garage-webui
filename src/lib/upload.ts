@@ -51,7 +51,6 @@ export async function uploadFileMultipart(
     // Step 2: Upload parts in parallel with concurrency limit
     const parts: UploadPart[] = [];
     const chunkProgress: Record<number, number> = {};
-    let uploadedBytes = 0;
 
     // Create upload tasks for all chunks
     const uploadTasks = Array.from({ length: totalChunks }, (_, i) => ({
