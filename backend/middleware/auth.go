@@ -41,8 +41,12 @@ func BucketPermissionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Extract bucket name from path
+		// Extract bucket name from path or query parameter
 		bucket := r.PathValue("bucket")
+		if bucket == "" {
+			bucket = r.URL.Query().Get("bucket")
+		}
+		
 		if bucket == "" {
 			// For list buckets endpoint, allow but filter results
 			next.ServeHTTP(w, r)

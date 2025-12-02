@@ -122,12 +122,20 @@ func (b *Buckets) GetLifecycleConfiguration(w http.ResponseWriter, r *http.Reque
 			switch v := rule.Filter.(type) {
 			case *types.LifecycleRuleFilterMemberPrefix:
 				filter.Prefix = v.Value
+				// Also set the top-level Prefix field for frontend compatibility
+				if schemaRule.Prefix == nil {
+					schemaRule.Prefix = &v.Value
+				}
 			case *types.LifecycleRuleFilterMemberTag:
 				filter.Tags = []schema.LifecycleTag{{Key: *v.Value.Key, Value: *v.Value.Value}}
 			case *types.LifecycleRuleFilterMemberAnd:
 				and := &schema.LifecycleFilterAnd{}
 				if v.Value.Prefix != nil {
 					and.Prefix = *v.Value.Prefix
+					// Also set the top-level Prefix field for frontend compatibility
+					if schemaRule.Prefix == nil {
+						schemaRule.Prefix = v.Value.Prefix
+					}
 				}
 				if v.Value.Tags != nil {
 					and.Tags = make([]schema.LifecycleTag, 0, len(v.Value.Tags))
@@ -199,8 +207,11 @@ func (b *Buckets) PutLifecycleConfiguration(w http.ResponseWriter, r *http.Reque
 			awsRule.ID = &rule.ID
 		}
 
-		if rule.Prefix != nil {
-			awsRule.Prefix = rule.Prefix
+		// Handle Prefix - prefer using Filter for consistency
+		if rule.Prefix != nil && *rule.Prefix != "" {
+			awsRule.Filter = &types.LifecycleRuleFilterMemberPrefix{
+				Value: *rule.Prefix,
+			}
 		}
 
 		if rule.Filter != nil {

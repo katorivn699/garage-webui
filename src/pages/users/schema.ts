@@ -10,7 +10,13 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
-  password: z.string().min(6, "Password must be at least 6 characters").optional(),
+  password: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || val.length === 0 || val.length >= 6,
+      "Password must be at least 6 characters"
+    ),
   role: userRoleSchema.optional(),
   bucket_permissions: z.array(z.string()).optional(),
 });

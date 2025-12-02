@@ -34,7 +34,14 @@ const LifecycleRuleForm = ({ rule, onSave, onCancel }: Props) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Clean up form data before saving
+    const cleanedData: LifecycleRule = {
+      ...formData,
+      prefix: formData.prefix?.trim() || undefined,
+    };
+    
+    onSave(cleanedData);
   };
 
   const updateField = <K extends keyof LifecycleRule>(
@@ -112,7 +119,7 @@ const LifecycleRuleForm = ({ rule, onSave, onCancel }: Props) => {
           type="text"
           className="input input-bordered"
           value={formData.prefix || ""}
-          onChange={(e) => updateField("prefix", e.target.value || undefined)}
+          onChange={(e) => updateField("prefix", e.target.value)}
           placeholder="e.g., temp/ (leave empty for all objects)"
         />
       </div>

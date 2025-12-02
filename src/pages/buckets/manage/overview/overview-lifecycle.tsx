@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button, Card, Modal } from "react-daisyui";
-import { Clock, Plus, Trash2 } from "lucide-react";
+import { Clock, Plus, Trash2, Pencil } from "lucide-react";
 import { useBucketContext } from "../context";
 import { useLifecycleConfiguration } from "../hooks";
 import { LifecycleRule } from "../../types";
@@ -148,7 +148,7 @@ const LifecycleSection = () => {
                   color="ghost"
                   onClick={() => handleEditRule(rule)}
                 >
-                  Edit
+                  <Pencil size={16} />
                 </Button>
                 <Button
                   size="sm"
